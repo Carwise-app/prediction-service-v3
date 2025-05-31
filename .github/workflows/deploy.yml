@@ -1,0 +1,60 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/carrecognizer
+  DOCKER_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }},${{ env.DOCKER_IMAGE }}:latest
+
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        script: |
+          # Login to Docker Hub
+          echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+          
+          # Pull the new image
+          docker pull ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+          
+          # Stop and remove the old container if it exists
+          docker stop carrecognizer || true
+          docker rm carrecognizer || true
+          
+          # Run the new container
+          docker run -d \
+            --name carrecognizer \
+            --restart unless-stopped \
+            -p 4042:4042 \
+            ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+          
+          # Clean up old images
+          docker image prune -f 
