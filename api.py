@@ -6,9 +6,9 @@ import pandas as pd
 
 app = FastAPI(title="CARWISE API", version="1.0")
 
-model = joblib.load("carwise_hgb_model_20250615_1656.pkl")
-r2 = joblib.load("hgb_model_r2_20250615_1656.pkl")
-mae = joblib.load("hgb_model_mae_20250615_1656.pkl")
+model = joblib.load("carwise_hgb_model_20250518_2026.pkl")
+r2 = joblib.load("hgb_model_r2_20250531_0033.pkl")
+mae = joblib.load("hgb_model_mae_20250531_0033.pkl")
 
 class CarInput(BaseModel):
     Marka: str
